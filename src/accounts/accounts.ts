@@ -1,4 +1,5 @@
 import {Request, RequestHandler, Response} from "express";
+import OracleDB from "oracledb";
 
 /*
     Nampespace que contém tudo sobre "contas de usuários"
@@ -9,116 +10,57 @@ export namespace AccountsHandler {
      * Tipo UserAccount
      */
     export type UserAccount = {
-        name:string;
+        id: number | undefined;   //Porque nao chega no bd com o id
+        completeName:string;
         email:string;
-        password:string;
-        birthdate:string; 
-    };
+        password:string | undefined;
+    }; 
 
-    // Array que representa uma coleção de contas. 
-    let accountsDatabase: UserAccount[] = [];
-
-    /**
-     * Salva uma conta no banco de dados. 
-     * @param ua conta de usuário do tipo @type {UserAccount}
-     * @returns @type { number } o código da conta cadastrada como posição no array.
-     */
-    export function saveNewAccount(ua: UserAccount) : number{
-        accountsDatabase.push(ua);
-        return accountsDatabase.length;
-    }
-    
-    export function GetAllAcounts() {
-        return accountsDatabase;
-    }
-
-    function VerificarEmail(email:string): boolean{
-        let valid =  false
-        const account =  accountsDatabase.find(a => {
-            if (a.email === email){
-                valid = true;
-                return;
-            }
-        })
-        return valid;
-
-
-
-    }
+    async function login( email:string, password:string): Promise<UserAccount | undefined>{  //Ou retorna um user ou undefined
+        //passo 1 - Conectar se ao oracle.     //Estudar promisse
+        let connection = await OracleDB.getConnection({
+            user:"ADMIN",
+            password: "123",
+            connectString: "Minha string de conexao..."
+        });
 
 
 
 
-    export function Authenticate(email:string, password:string): boolean {
-        let valid:boolean = false;
-        const account = accountsDatabase.find(a =>{
-            if(a.email === email && a.password === password){
-                valid = true;
-                return;
-            }
-        })
-        return valid;
-        
-    }
+        let results = await connection.execute(   //: Significa que pega da requisicao 
+            'SELECT * FROM ACCOUNT WHERE email = :email AND password = :password',
+            [email,password] //Parametros
+        );
 
+        console.dir(results.rows);
+        if (results.rows === undefined) {
+            return undefined;
+        }
+        else {
+            //Retornar conta
 
-    /**
-     * Função para tratar a rota HTTP /signUp. 
-     * @param req Requisição http tratada pela classe @type { Request } do express
-     * @param res Resposta http a ser enviada para o cliente @type { Response }
-     */
-    export const createAccountRoute: RequestHandler = (req: Request, res: Response) => {
-        // Passo 1 - Receber os parametros para criar a conta
-        const pName = req.get('name');
-        const pEmail = req.get('email');
-        const pPassword = req.get('password');
-        const pBirthdate = req.get('birthdate');
-        
-        if(pName && pEmail && pPassword && pBirthdate){
-
-            // prosseguir com o cadastro... 
-            if(VerificarEmail(pEmail)){ 
-                res.statusCode =400;
-                res.send('Email já cadastrado!');
-            }
-            else { 
-            const newAccount: UserAccount = {
-                name: pName,
-                email: pEmail, 
-                password: pPassword,
-                birthdate: pBirthdate
-            }
-            const ID = saveNewAccount(newAccount);
-            res.statusCode = 200; 
-            res.send(`Nova conta adicionada. Código: ${ID}`);
+            console.dir(results.rows[0]);
         }
         
-        }
-        else{
-            res.statusCode = 400;
-            res.send("Parâmetros inválidos ou faltantes.");
-        }
-
-}
 
 
-    export const loginHandler: RequestHandler = (req:Request, res: Response) => {
-        const pEmail =  req.get('email');
-        const pPassword = req.get('senha');
+    }
 
-        if(pEmail && pPassword){
-            if (Authenticate(pEmail,pPassword)){
+    export const loginHandler:RequestHandler = 
+        async (req:Request, res: Response) => {
+            const pEmail = req.get('email');
+            const pPassword = req.get('password');
+
+            if (pEmail && pPassword){
+                await login(pEmail,pPassword)
                 res.statusCode = 200;
-                res.send('Conta acessada com sucesso!');
-
+                res.send('Login Realizado... Confira...');
             }
             else {
-                res.statusCode = 400;
-                res.send('Acesso Inválido!');
+                res.statusCode = 400;  
+                res.send('Requisição inválida - Parâmetros faltnado.');
             }
+
         }
-
-
-    }
 
 }
