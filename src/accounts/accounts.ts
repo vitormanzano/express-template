@@ -24,9 +24,6 @@ export namespace AccountsHandler {
             connectString: "Minha string de conexao..."
         });
 
-
-
-
         let results = await connection.execute(   //: Significa que pega da requisicao 
             'SELECT * FROM ACCOUNT WHERE email = :email AND password = :password',
             [email,password] //Parametros
@@ -41,9 +38,6 @@ export namespace AccountsHandler {
 
             console.dir(results.rows[0]);
         }
-        
-
-
     }
 
     export const loginHandler:RequestHandler = 
@@ -60,7 +54,5 @@ export namespace AccountsHandler {
                 res.statusCode = 400;  
                 res.send('Requisição inválida - Parâmetros faltnado.');
             }
-
         }
-
 }
